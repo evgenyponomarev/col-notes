@@ -1,0 +1,88 @@
+<html>
+  <body>
+    <h1>Collaborative notes</h1>
+  
+    <form id="sign">
+    	<h3>Sign up or auth mazafaka</h3>
+    	<div style="display:block;float:left; margin-right: 50px">
+    		Sign in:<br>
+    		<span style="color:red" id="error-sign"></span>
+      		<input id="alias-in" placeholder="username"><br>
+      		<input id="pass-in" type="password" placeholder="passphrase"><br>
+      		<input id="in" type="button" value="sign in">
+      	</div>
+      	<div style="display:block;float:left;">
+      		Sign up:<br>
+      		<span style="color:red" id="error-up"></span>
+      		<input id="alias-up" placeholder="username"><br>
+      		<input id="pass-up" type="password" placeholder="passphrase"><br>
+      		<input id="up" type="button" value="sign up">
+      	</div>
+    </form>
+
+    <div id="collaborative" style="display: none">
+    	<h3>Hello <span id="username"></span>!</h3>
+    	<textarea id="doc" cols=100 rows=20></textarea>
+    </div>  
+
+    <script src="https://cdn.jsdelivr.net/npm/gun/examples/jquery.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gun/sea.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gun/lib/webrtc.js"></script>
+    <script>
+    var gun = Gun(['https://gun-test-app.herokuapp.com/gun']);
+    var user = gun.user();
+
+    function authUser(alias, pass) {
+    	user.auth(alias, pass, onAuth);
+    }
+
+    function setUsername(data, id) {
+		$('#username').text(data);
+    }
+
+    function onAuth(err) {
+    	if($(err).attr('err')) $('#error-in').html(err.err + '<br>');
+    	else {
+			$('#sign').hide();
+	      	$('#collaborative').show();
+	      	user.get('alias').once(setUsername);     
+	       	user.get('doc').map().on(updateTextarea);
+    	}
+    }
+
+    $('#up').on('click', function(e){
+      user.create($('#alias-up').val(), $('#pass-up').val(), function(err) {
+      	console.log(err);
+      	if(err.err) $('#error-up').html(err.err + '<br>');
+      	if(err.pub) authUser($('#alias-up').val(), $('#pass-up').val());
+      });
+    });
+
+    $('#in').on('click', function(e){
+      authUser($('#alias-in').val(), $('#pass-in').val());
+    });
+
+    $('#doc').bind('input propertychange', function(e) {
+    	e.preventDefault();
+
+      	if(!user.is){ return }
+      	user.get('doc').put({mykey:$('#doc').val()});
+    })
+
+    gun.get('doc').get('mykey').on(function(value) {
+    	$('#doc').val(value);
+    });
+
+    function updateTextarea(text, id) {
+    	$('#doc').val(text);
+    }
+
+    gun.on('auth', function(){
+      onAuth();
+    });
+
+
+    </script>
+  </body>
+</html>
